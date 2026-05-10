@@ -269,9 +269,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         if (showRails && !_heroLoading && _heroGroups.isNotEmpty)
                           for (final entry in _heroGroups)
-                            SliverToBoxAdapter(
-                              child: _TierRail(title: tierLabels[entry.key]!, items: entry.value),
-                            ),
+                            if (!homeTierRedundantWithPlatformLiveRail(entry.key))
+                              SliverToBoxAdapter(
+                                child: _TierRail(title: tierLabels[entry.key]!, items: entry.value),
+                              ),
                         if (showRails && auth.isSignedIn)
                           SliverToBoxAdapter(
                             child: BestMatchRail(

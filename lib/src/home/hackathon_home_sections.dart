@@ -84,6 +84,22 @@ bool shouldShowCuratedHomeSections({
       !hackathonHasChipFilters(filters);
 }
 
+/// Curated tiers that duplicate a [PlatformLiveRail] for the same host (tabs = Featured, Active, …).
+/// Skip [_TierRail] for these so we do not show the same platform twice.
+bool homeTierRedundantWithPlatformLiveRail(HomeRelevanceTier t) {
+  switch (t) {
+    case HomeRelevanceTier.featuredDevpost:
+    case HomeRelevanceTier.liveDevpost:
+    case HomeRelevanceTier.lablab:
+    case HomeRelevanceTier.hack2skill:
+      return true;
+    case HomeRelevanceTier.hackerearth:
+    case HomeRelevanceTier.more:
+    case HomeRelevanceTier.past:
+      return false;
+  }
+}
+
 List<MapEntry<HomeRelevanceTier, List<Hackathon>>> groupHackathonsByHomeTier(List<Hackathon> items) {
   final buckets = <HomeRelevanceTier, List<Hackathon>>{
     for (final t in homeSectionOrder) t: [],
