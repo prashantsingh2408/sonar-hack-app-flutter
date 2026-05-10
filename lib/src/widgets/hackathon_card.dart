@@ -21,12 +21,15 @@ class HackathonCard extends StatelessWidget {
     super.key,
     required this.hackathon,
     this.wishlist,
+    this.onOpenDetail,
     this.maxDescriptionChars = 200,
     this.themeChipLimit = 8,
   });
 
   final Hackathon hackathon;
   final WishlistBinding? wishlist;
+  /// When set, tap opens in-app detail (web `/hackathon/[slug]` parity); otherwise opens external host URL.
+  final ValueChanged<Hackathon>? onOpenDetail;
   final int maxDescriptionChars;
   final int themeChipLimit;
 
@@ -80,7 +83,15 @@ class HackathonCard extends StatelessWidget {
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: InkWell(
-        onTap: platformHostUrl != null ? () => _openExternal(context, platformHostUrl) : null,
+        onTap: () {
+          if (onOpenDetail != null) {
+            onOpenDetail!(hackathon);
+            return;
+          }
+          if (platformHostUrl != null) {
+            _openExternal(context, platformHostUrl);
+          }
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

@@ -12,11 +12,13 @@ class PlatformLiveRail extends StatefulWidget {
     required this.platform,
     required this.api,
     this.wishlist,
+    this.onOpenDetail,
   });
 
   final String platform;
   final HackathonApi api;
   final WishlistBinding? wishlist;
+  final ValueChanged<Hackathon>? onOpenDetail;
 
   @override
   State<PlatformLiveRail> createState() => _PlatformLiveRailState();
@@ -111,7 +113,11 @@ class _PlatformLiveRailState extends State<PlatformLiveRail> {
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (context, i) => SizedBox(
                   width: 300,
-                  child: HackathonCard(hackathon: _items[i], wishlist: widget.wishlist),
+                  child: HackathonCard(
+                    hackathon: _items[i],
+                    wishlist: widget.wishlist,
+                    onOpenDetail: widget.onOpenDetail,
+                  ),
                 ),
               ),
             ),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:http/http.dart' as http;
 
@@ -47,4 +48,52 @@ class HackathonApi {
     }
     return PaginatedResponse.fromJson(json, Hackathon.fromJson);
   }
+
+  /// GET `/api/hackathons/by-ids?ids=1,2,3` — same as web wishlist/collections.
+  Future<List<Hackathon>> getHackathonsByIds(List<int> ids) async {
+    if (ids.isEmpty) return [];
+    const maxPerRequest = 100;
+    final out = <Hackathon>[];
+    for (var i = 0; i < ids.length; i += maxPerRequest) {
+      final chunk = ids.sublist(i, math.min(i + maxPerRequest, ids.length));
+      final uri = _uri('/api/hackathons/by-ids', {'ids': chunk.join(',')});
+      final res = await http.get(uri, headers: {'Accept': 'application/json'});
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw HackathonApiException(res.body.isNotEmpty ? res.body : 'by-ids failed', res.statusCode);
+      }
+      final json = jsonDecode(res.body);
+      if (json is! Map<String, dynamic>) throw HackathonApiException('Invalid by-ids JSON');
+      final raw = json['items'];
+      if (raw is! List) continue;
+      for (final e in raw) {
+        if (e is Map<String, dynamic>) {
+          out.add(Hackathon.fromJson(e));
+        }
+      }
+    }
+    return out;
+  }
+
+  /// GET `/api/hackathons/by-slug?slug=...` — single-hackathon refresh (web detail).
+  Future<Hackathon?> getHackathonBySlug(String slug) async {
+    final s = slug.trim().toLowerCase();
+    if (s.isEmpty) return null;
+    final uri = _uri('/api/hackathons/by-slug', {'slug': s});
+    final res = await http.get(uri, headers: {'Accept': 'application/json'});
+    if (res.statusCode == 404) return null;
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw HackathonApiException(res.body, res.statusCode);
+    }
+    final json = jsonDecode(res.body);
+    if (json is! Map<String, dynamic> || json['ok'] != true) return null;
+    final item = json['item'];
+    if (item is! Map<String, dynamic>) return null;
+    return Hackathon.fromJson(item);
+  }
+}
+
+/// Preserves wishlist / collection order after [HackathonApi.getHackathonsByIds].
+List<Hackathon> orderHackathonsByIds(List<Hackathon> loaded, List<int> ids) {
+  final m = {for (final h in loaded) h.id: h};
+  return ids.map((id) => m[id]).whereType<Hackathon>().toList();
 }

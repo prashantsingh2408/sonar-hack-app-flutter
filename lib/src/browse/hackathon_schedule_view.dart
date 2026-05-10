@@ -4,9 +4,10 @@ import 'package:intl/intl.dart';
 import '../models/hackathon.dart';
 
 class HackathonScheduleView extends StatelessWidget {
-  const HackathonScheduleView({super.key, required this.items});
+  const HackathonScheduleView({super.key, required this.items, this.onHackathonTap});
 
   final List<Hackathon> items;
+  final ValueChanged<Hackathon>? onHackathonTap;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +59,7 @@ class HackathonScheduleView extends StatelessWidget {
                     h.endDate != null ? 'Ends ${_short(h.endDate!)}' : 'Starts ${_short(h.startDate)}',
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
+                  onTap: onHackathonTap != null ? () => onHackathonTap!(h) : null,
                 ),
               ),
           ],

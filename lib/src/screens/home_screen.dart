@@ -8,7 +8,12 @@ import '../browse/filter_sheet.dart';
 import '../browse/hackathon_schedule_view.dart';
 import '../browse/hackathon_table_view.dart';
 import '../browse/query_params.dart';
+import '../home/hackathon_home_sections.dart';
+import '../home/best_match_rail.dart';
+import '../home/platform_live_slices.dart';
+import '../home/platform_rail.dart';
 import '../models/hackathon.dart';
+import 'hackathon_detail_screen.dart';
 import 'login_screen.dart';
 import '../state/app_state.dart';
 import '../state/auth_state.dart';
@@ -26,9 +31,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _search = TextEditingController();
   List<Hackathon> _items = [];
+  List<MapEntry<HomeRelevanceTier, List<Hackathon>>> _heroGroups = [];
   Set<int> _wishlistIds = {};
   String? _error;
   bool _loading = false;
+  bool _heroLoading = false;
   AuthState? _authListener;
 
   @override
@@ -57,6 +64,15 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  bool _showCurated(BrowseState b) {
+    return shouldShowCuratedHomeSections(
+          filters: b.filters,
+          search: _search.text,
+          sortChain: b.sortChain,
+        ) &&
+        b.displayMode == HackathonListDisplayMode.grid;
+  }
+
   Future<void> _loadCatalog() async {
     final app = context.read<AppState>();
     final browse = context.read<BrowseState>();
@@ -65,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _loading = true;
       _error = null;
     });
-      browse.setSearchTerm(_search.text.trim());
+    browse.setSearchTerm(_search.text.trim());
     try {
       final res = await api.listHackathons(
         BuildHackathonListParamsInput(
@@ -89,8 +105,36 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadHeroIfNeeded() async {
+    final browse = context.read<BrowseState>();
+    if (!_showCurated(browse)) {
+      setState(() => _heroGroups = []);
+      return;
+    }
+    final app = context.read<AppState>();
+    final api = HackathonApi(app.apiOrigin);
+    setState(() => _heroLoading = true);
+    try {
+      final res = await api.listHackathonsQuery({
+        'page': '1',
+        'page_size': '80',
+        'sort': 'most_relevant',
+      });
+      setState(() {
+        _heroGroups = groupHackathonsByHomeTier(res.items);
+        _heroLoading = false;
+      });
+    } catch (_) {
+      setState(() {
+        _heroGroups = [];
+        _heroLoading = false;
+      });
+    }
+  }
+
   Future<void> _reloadAll() async {
     await _loadCatalog();
+    await _loadHeroIfNeeded();
     await _syncWishlistIfNeeded();
   }
 
@@ -134,12 +178,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openHackathon(Hackathon h) {
+    final wl = _wishlistFor(context.read<AuthState>());
+    pushHackathonDetail(context, h, wl);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final browse = context.watch<BrowseState>();
     final auth = context.watch<AuthState>();
     final wl = _wishlistFor(auth);
+    final showRails = _showCurated(browse);
 
     return Scaffold(
       appBar: AppBar(
@@ -265,11 +315,48 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _reloadAll,
-              child: _loading && _items.isEmpty
+              child: _loading && _items.isEmpty && !showRails
                   ? const Center(child: CircularProgressIndicator())
                   : CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
+                        if (showRails && _heroLoading)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: LinearProgressIndicator(minHeight: 3),
+                            ),
+                          ),
+                        if (showRails && !_heroLoading && _heroGroups.isNotEmpty)
+                          for (final entry in _heroGroups)
+                            if (!homeTierRedundantWithPlatformLiveRail(entry.key))
+                              SliverToBoxAdapter(
+                                child: _TierRail(
+                                  title: tierLabels[entry.key]!,
+                                  items: entry.value,
+                                  wishlist: wl,
+                                  onOpenDetail: _openHackathon,
+                                ),
+                              ),
+                        if (showRails && auth.isSignedIn)
+                          SliverToBoxAdapter(
+                            child: BestMatchRail(
+                              origin: context.read<AppState>().apiOrigin,
+                              token: auth.accessToken,
+                              wishlist: wl,
+                              onOpenDetail: _openHackathon,
+                            ),
+                          ),
+                        if (showRails)
+                          for (final host in platformLiveHosts)
+                            SliverToBoxAdapter(
+                              child: PlatformLiveRail(
+                                platform: host,
+                                api: HackathonApi(context.read<AppState>().apiOrigin),
+                                wishlist: wl,
+                                onOpenDetail: _openHackathon,
+                              ),
+                            ),
                         SliverToBoxAdapter(
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -294,7 +381,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   if (_items.isEmpty) {
                                     return const Center(child: Text('No results'));
                                   }
-                                  return HackathonCard(hackathon: _items[i], wishlist: wl);
+                                  return HackathonCard(
+                                    hackathon: _items[i],
+                                    wishlist: wl,
+                                    onOpenDetail: _openHackathon,
+                                  );
                                 },
                                 childCount: _items.isEmpty ? 1 : _items.length,
                               ),
@@ -304,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           SliverToBoxAdapter(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 8),
-                              child: HackathonTableView(items: _items),
+                              child: HackathonTableView(items: _items, onHackathonTap: _openHackathon),
                             ),
                           )
                         else
@@ -313,13 +404,66 @@ class _HomeScreenState extends State<HomeScreen> {
                               height: MediaQuery.sizeOf(context).height * 0.55,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                                child: HackathonScheduleView(items: _items),
+                                child: HackathonScheduleView(items: _items, onHackathonTap: _openHackathon),
                               ),
                             ),
                           ),
                         const SliverToBoxAdapter(child: SizedBox(height: 32)),
                       ],
                     ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TierRail extends StatelessWidget {
+  const _TierRail({
+    required this.title,
+    required this.items,
+    this.wishlist,
+    this.onOpenDetail,
+  });
+
+  final String title;
+  final List<Hackathon> items;
+  final WishlistBinding? wishlist;
+  final ValueChanged<Hackathon>? onOpenDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+          ),
+          SizedBox(
+            height: 560,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, i) => SizedBox(
+                width: 300,
+                child: HackathonCard(
+                  hackathon: items[i],
+                  wishlist: wishlist,
+                  onOpenDetail: onOpenDetail,
+                ),
+              ),
             ),
           ),
         ],

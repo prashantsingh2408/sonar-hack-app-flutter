@@ -52,14 +52,9 @@ class _RootShellState extends State<RootShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        child: KeyedSubtree(
-          key: ValueKey(index),
-          child: _pages[index],
-        ),
+      body: IndexedStack(
+        index: index,
+        children: _pages,
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,

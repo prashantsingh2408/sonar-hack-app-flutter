@@ -4,9 +4,10 @@ import 'package:intl/intl.dart';
 import '../models/hackathon.dart';
 
 class HackathonTableView extends StatelessWidget {
-  const HackathonTableView({super.key, required this.items});
+  const HackathonTableView({super.key, required this.items, this.onHackathonTap});
 
   final List<Hackathon> items;
+  final ValueChanged<Hackathon>? onHackathonTap;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +31,7 @@ class HackathonTableView extends StatelessWidget {
               rows: [
                 for (final h in items)
                   DataRow(
+                    onSelectChanged: onHackathonTap != null ? (_) => onHackathonTap!(h) : null,
                     cells: [
                       DataCell(
                         SizedBox(
