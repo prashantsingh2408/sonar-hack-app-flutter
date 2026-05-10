@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../api/hackathon_api.dart';
+import '../api/me_api.dart';
 import '../browse/display_mode.dart';
 import '../browse/filter_sheet.dart';
 import '../browse/hackathon_schedule_view.dart';
@@ -30,23 +31,34 @@ class _HomeScreenState extends State<HomeScreen> {
   final _search = TextEditingController();
   List<Hackathon> _items = [];
   List<MapEntry<HomeRelevanceTier, List<Hackathon>>> _heroGroups = [];
+  Set<int> _wishlistIds = {};
   String? _error;
   bool _loading = false;
   bool _heroLoading = false;
+  AuthState? _authListener;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final b = context.read<BrowseState>();
       _search.text = b.searchTerm;
-      _loadCatalog();
-      _loadHeroIfNeeded();
+      final auth = context.read<AuthState>();
+      _authListener = auth;
+      auth.addListener(_onAuthChanged);
+      await _reloadAll();
     });
+  }
+
+  void _onAuthChanged() {
+    if (!mounted) return;
+    _syncWishlistIfNeeded();
   }
 
   @override
   void dispose() {
+    _authListener?.removeListener(_onAuthChanged);
     _search.dispose();
     super.dispose();
   }
@@ -122,6 +134,47 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _reloadAll() async {
     await _loadCatalog();
     await _loadHeroIfNeeded();
+    await _syncWishlistIfNeeded();
+  }
+
+  Future<void> _syncWishlistIfNeeded() async {
+    final auth = context.read<AuthState>();
+    if (!auth.isSignedIn || auth.accessToken == null || auth.accessToken!.isEmpty) {
+      if (_wishlistIds.isNotEmpty) setState(() => _wishlistIds = {});
+      return;
+    }
+    try {
+      final ids =
+          await MeApi(context.read<AppState>().apiOrigin, auth.accessToken).getWishlistHackathonIds();
+      setState(() => _wishlistIds = Set<int>.from(ids));
+    } catch (_) {}
+  }
+
+  Future<void> _toggleWishlist(int id) async {
+    final auth = context.read<AuthState>();
+    final origin = context.read<AppState>().apiOrigin;
+    if (!auth.isSignedIn || auth.accessToken == null || auth.accessToken!.isEmpty) return;
+    final api = MeApi(origin, auth.accessToken);
+    final add = !_wishlistIds.contains(id);
+    try {
+      await api.setWishlistHackathon(id, add);
+      setState(() {
+        if (add) {
+          _wishlistIds = {..._wishlistIds, id};
+        } else {
+          final next = {..._wishlistIds}..remove(id);
+          _wishlistIds = next;
+        }
+      });
+    } catch (_) {}
+  }
+
+  WishlistBinding? _wishlistFor(AuthState auth) {
+    if (!auth.isSignedIn || auth.accessToken == null || auth.accessToken!.isEmpty) return null;
+    return WishlistBinding(
+      contains: (id) => _wishlistIds.contains(id),
+      toggle: _toggleWishlist,
+    );
   }
 
   @override
@@ -129,6 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final scheme = Theme.of(context).colorScheme;
     final browse = context.watch<BrowseState>();
     final auth = context.watch<AuthState>();
+    final wl = _wishlistFor(auth);
     final showRails = _showCurated(browse);
 
     return Scaffold(
@@ -196,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             onSelected: (mode) {
               context.read<BrowseState>().setDisplayMode(mode);
-              _loadHeroIfNeeded();
+              _reloadAll();
             },
             itemBuilder: (context) => const [
               PopupMenuItem(value: HackathonListDisplayMode.grid, child: Text('Grid')),
@@ -271,13 +325,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           for (final entry in _heroGroups)
                             if (!homeTierRedundantWithPlatformLiveRail(entry.key))
                               SliverToBoxAdapter(
-                                child: _TierRail(title: tierLabels[entry.key]!, items: entry.value),
+                                child: _TierRail(
+                                  title: tierLabels[entry.key]!,
+                                  items: entry.value,
+                                  wishlist: wl,
+                                ),
                               ),
                         if (showRails && auth.isSignedIn)
                           SliverToBoxAdapter(
                             child: BestMatchRail(
                               origin: context.read<AppState>().apiOrigin,
                               token: auth.accessToken,
+                              wishlist: wl,
                             ),
                           ),
                         if (showRails)
@@ -286,6 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: PlatformLiveRail(
                                 platform: host,
                                 api: HackathonApi(context.read<AppState>().apiOrigin),
+                                wishlist: wl,
                               ),
                             ),
                         SliverToBoxAdapter(
@@ -305,14 +365,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisCount: MediaQuery.sizeOf(context).width > 700 ? 2 : 1,
                                 mainAxisSpacing: 14,
                                 crossAxisSpacing: 14,
-                                childAspectRatio: 1.15,
+                                childAspectRatio: 0.58,
                               ),
                               delegate: SliverChildBuilderDelegate(
                                 (context, i) {
                                   if (_items.isEmpty) {
                                     return const Center(child: Text('No results'));
                                   }
-                                  return HackathonCard(hackathon: _items[i]);
+                                  return HackathonCard(hackathon: _items[i], wishlist: wl);
                                 },
                                 childCount: _items.isEmpty ? 1 : _items.length,
                               ),
@@ -347,10 +407,11 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _TierRail extends StatelessWidget {
-  const _TierRail({required this.title, required this.items});
+  const _TierRail({required this.title, required this.items, this.wishlist});
 
   final String title;
   final List<Hackathon> items;
+  final WishlistBinding? wishlist;
 
   @override
   Widget build(BuildContext context) {
@@ -370,13 +431,14 @@ class _TierRail extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: 220,
+            height: 560,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, i) => SizedBox(width: 280, child: HackathonCard(hackathon: items[i])),
+              itemBuilder: (context, i) =>
+                  SizedBox(width: 300, child: HackathonCard(hackathon: items[i], wishlist: wishlist)),
             ),
           ),
         ],

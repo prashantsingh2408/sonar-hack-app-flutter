@@ -51,6 +51,45 @@ class MeApi {
     return ids;
   }
 
+  /// POST add or DELETE remove — mirrors Next `/api/me/wishlist`.
+  Future<void> setWishlistHackathon(int hackathonId, bool add) async {
+    if (add) {
+      final uri = _uri('/api/me/wishlist');
+      final res = await http.post(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...bearerHeaders(accessToken),
+        },
+        body: jsonEncode({'item_id': hackathonId, 'item_type': 'hackathon'}),
+      );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw MeApiException(res.body, res.statusCode);
+      }
+      final body = jsonDecode(res.body);
+      if (body is! Map<String, dynamic> || body['ok'] != true) {
+        throw MeApiException(res.body, res.statusCode);
+      }
+    } else {
+      final uri = _uri('/api/me/wishlist', {
+        'item_id': '$hackathonId',
+        'item_type': 'hackathon',
+      });
+      final res = await http.delete(
+        uri,
+        headers: {'Accept': 'application/json', ...bearerHeaders(accessToken)},
+      );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        throw MeApiException(res.body, res.statusCode);
+      }
+      final body = jsonDecode(res.body);
+      if (body is! Map<String, dynamic> || body['ok'] != true) {
+        throw MeApiException(res.body, res.statusCode);
+      }
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getCollections() async {
     final uri = _uri('/api/me/collections');
     final res = await http.get(uri, headers: {'Accept': 'application/json', ...bearerHeaders(accessToken)});

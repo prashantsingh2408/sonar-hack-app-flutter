@@ -13,10 +13,13 @@ class Hackathon {
     this.themes,
     this.prizeAmount,
     this.registrationsCount,
-      this.displayLocation,
+    this.displayLocation,
     this.featured,
     this.managedByDevpostBadge,
     this.listingActive,
+    this.whoCanParticipate,
+    this.participantAudienceTags,
+    this.inviteOnly,
   });
 
   final int id;
@@ -36,6 +39,11 @@ class Hackathon {
   final bool? featured;
   final bool? managedByDevpostBadge;
   final bool? listingActive;
+  /// Devpost-style eligibility HTML/text (optional).
+  final String? whoCanParticipate;
+  /// Comma-separated canonical audience tags (optional).
+  final String? participantAudienceTags;
+  final bool? inviteOnly;
 
   factory Hackathon.fromJson(Map<String, dynamic> j) {
     return Hackathon(
@@ -56,6 +64,9 @@ class Hackathon {
       featured: j['featured'] as bool?,
       managedByDevpostBadge: j['managed_by_devpost_badge'] as bool?,
       listingActive: j['listing_active'] as bool?,
+      whoCanParticipate: j['who_can_participate'] as String?,
+      participantAudienceTags: j['participant_audience_tags'] as String?,
+      inviteOnly: j['invite_only'] as bool?,
     );
   }
 }

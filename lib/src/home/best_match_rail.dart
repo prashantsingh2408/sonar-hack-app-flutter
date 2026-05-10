@@ -6,10 +6,11 @@ import '../widgets/hackathon_card.dart';
 
 /// “For you” rail from `/api/me/best-match-hackathons` (wishlist + history signals).
 class BestMatchRail extends StatefulWidget {
-  const BestMatchRail({super.key, required this.origin, required this.token});
+  const BestMatchRail({super.key, required this.origin, required this.token, this.wishlist});
 
   final String origin;
   final String? token;
+  final WishlistBinding? wishlist;
 
   @override
   State<BestMatchRail> createState() => _BestMatchRailState();
@@ -70,14 +71,16 @@ class _BestMatchRailState extends State<BestMatchRail> {
                 ),
               ),
               SizedBox(
-                height: 220,
+                height: 560,
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
                   itemCount: items.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, i) =>
-                      SizedBox(width: 280, child: HackathonCard(hackathon: items[i])),
+                  itemBuilder: (context, i) => SizedBox(
+                    width: 300,
+                    child: HackathonCard(hackathon: items[i], wishlist: widget.wishlist),
+                  ),
                 ),
               ),
             ],
