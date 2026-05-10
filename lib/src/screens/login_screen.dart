@@ -1,10 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../state/app_state.dart';
 import '../state/auth_state.dart';
 import '../widgets/app_icons.dart';
+
+/// Strip Dart's `StateError` prefix so the dialog shows only the real message.
+String _signInErrorForDisplay(Object error) {
+  var s = error.toString();
+  const prefix = 'Bad state: ';
+  if (s.startsWith(prefix)) {
+    s = s.substring(prefix.length);
+  }
+  return s;
+}
+
+Future<void> _showSignInFailedDialog(BuildContext context, String message) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Sign-in failed'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: SelectableText(
+            message,
+            style: Theme.of(dialogContext).textTheme.bodyMedium,
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: message));
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Message copied')),
+            );
+          },
+          child: const Text('Copy'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
+}
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -41,38 +86,12 @@ class LoginScreen extends StatelessWidget {
               onPressed: auth.isSignedIn
                   ? null
                   : () async {
-                      final messenger = ScaffoldMessenger.of(context);
                       try {
                         await context.read<AuthState>().signInWithGoogle(origin);
                         if (context.mounted) Navigator.pop(context);
                       } catch (e) {
                         if (!context.mounted) return;
-                        final text = '$e';
-                        if (text.length > 140) {
-                          await showDialog<void>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Sign-in failed'),
-                              content: SingleChildScrollView(
-                                child: SelectableText(text),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx),
-                                  child: const Text('OK'),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(text),
-                              duration: const Duration(seconds: 10),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
+                        await _showSignInFailedDialog(context, _signInErrorForDisplay(e));
                       }
                     },
               icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
