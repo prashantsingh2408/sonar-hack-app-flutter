@@ -29,7 +29,11 @@ if [[ -n "${GOOGLE_SERVER_CLIENT_ID:-}" ]]; then
   DEFINES+=(--dart-define="GOOGLE_SERVER_CLIENT_ID=${GOOGLE_SERVER_CLIENT_ID}")
 fi
 
-echo "install_android: building release APK${DEFINES[*]:+ with dart-define}..."
+if (( ${#DEFINES[@]} > 0 )); then
+  echo "install_android: building release APK (with GOOGLE_SERVER_CLIENT_ID)..."
+else
+  echo "install_android: building release APK..."
+fi
 flutter build apk --release "${DEFINES[@]}"
 
 echo "install_android: installing on ${DEVICE}..."
