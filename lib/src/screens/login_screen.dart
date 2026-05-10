@@ -7,14 +7,17 @@ import '../state/app_state.dart';
 import '../state/auth_state.dart';
 import '../widgets/app_icons.dart';
 
-/// Strip Dart's `StateError` prefix so the dialog shows only the real message.
+/// Human-readable text for any sign-in error (no Dart `Bad state:` / `Exception:` clutter).
 String _signInErrorForDisplay(Object error) {
+  if (error is SignInFailure) return error.message;
   var s = error.toString();
-  const prefix = 'Bad state: ';
-  if (s.startsWith(prefix)) {
-    s = s.substring(prefix.length);
+  for (final prefix in <String>['Bad state: ', 'Exception: ']) {
+    if (s.startsWith(prefix)) {
+      s = s.substring(prefix.length);
+      break;
+    }
   }
-  return s;
+  return s.trim();
 }
 
 Future<void> _showSignInFailedDialog(BuildContext context, String message) async {

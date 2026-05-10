@@ -6,6 +6,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
+/// Shown when Google sign-in or `/api/mobile/verify-google` fails.
+/// Use [message] in UI — [toString] matches so logs/dialogs never show a `Bad state:` prefix.
+class SignInFailure implements Exception {
+  SignInFailure(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 /// Maps Android/iOS [PlatformException]s from [GoogleSignIn] into readable text.
 /// `sign_in_failed` with null message is common when the OAuth Android client or SHA-1 is missing.
 String formatGoogleSignInPlatformError(PlatformException e) {
@@ -95,19 +104,19 @@ class AuthState extends ChangeNotifier {
     try {
       account = await _google.signIn();
     } on PlatformException catch (e) {
-      throw StateError(formatGoogleSignInPlatformError(e));
+      throw SignInFailure(formatGoogleSignInPlatformError(e));
     }
     if (account == null) return;
 
-    GoogleSignInAuthentication auth;
+    GoogleSignInAuthentication gsiAuth;
     try {
-      auth = await account.authentication;
+      gsiAuth = await account.authentication;
     } on PlatformException catch (e) {
-      throw StateError(formatGoogleSignInPlatformError(e));
+      throw SignInFailure(formatGoogleSignInPlatformError(e));
     }
-    final idToken = auth.idToken;
+    final idToken = gsiAuth.idToken;
     if (idToken == null || idToken.isEmpty) {
-      throw StateError(
+      throw SignInFailure(
         'Google did not return an ID token. Set GOOGLE_SERVER_CLIENT_ID (web OAuth client) '
         'via --dart-define so the token validates against hacklens.vercel.app.',
       );
@@ -133,20 +142,20 @@ class AuthState extends ChangeNotifier {
           }
         }
       } catch (_) {}
-      throw StateError('verify-google failed (${res.statusCode}): $detail');
+      throw SignInFailure('verify-google failed (${res.statusCode}): $detail');
     }
 
     final json = jsonDecode(res.body);
-    if (json is! Map<String, dynamic>) throw StateError('Invalid verify response');
-    if (json['ok'] != true) throw StateError(json['error']?.toString() ?? 'verify failed');
+    if (json is! Map<String, dynamic>) throw SignInFailure('Invalid verify response');
+    if (json['ok'] != true) throw SignInFailure(json['error']?.toString() ?? 'verify failed');
 
     final token = json['accessToken'] as String?;
     final u = json['user'];
-    if (token == null || u is! Map<String, dynamic>) throw StateError('Missing token or user');
+    if (token == null || u is! Map<String, dynamic>) throw SignInFailure('Missing token or user');
 
     final email = u['email'] as String? ?? '';
     final uid = u['userId'] as String? ?? '';
-    if (email.isEmpty || uid.isEmpty) throw StateError('Invalid user payload');
+    if (email.isEmpty || uid.isEmpty) throw SignInFailure('Invalid user payload');
 
     accessToken = token;
     user = AuthUser(
