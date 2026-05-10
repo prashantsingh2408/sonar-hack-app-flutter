@@ -41,6 +41,15 @@ chmod +x tool/pull_vercel_env.sh   # once
 ./tool/pull_vercel_env.sh
 ```
 
+To refresh env in **every** Vercel-linked repo under the same workspace (Next app + Python APIs + LLM), run from **`sonar-hack-app`**:
+
+```bash
+cd ../sonar-hack-app
+npm run env:pull:all
+```
+
+Then run **`./tool/pull_vercel_env.sh`** here so Flutter picks up **`AUTH_GOOGLE_ID`** from the Next `.env*` files.
+
 **Equivalent manual commands** (from **`sonar-hack-app`**):
 
 ```bash
