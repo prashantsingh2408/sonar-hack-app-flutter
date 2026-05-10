@@ -18,31 +18,44 @@ flutter pub get
 
 ---
 
-## Run with **no manual** `--dart-define` (uses `sonar-hack-app/.env.local`)
+## Run with **no manual** `--dart-define` (reads Next env files)
 
-The app needs **`GOOGLE_SERVER_CLIENT_ID`** = the **same Web OAuth client id** as Next’s **`AUTH_GOOGLE_ID`**. The helper scripts read it from the Next app env file.
+Flutter does **not** store OAuth secrets in-repo. Scripts read **`sonar-hack-app`** env files and pass **`--dart-define`** at run/build time.
 
-### 1) Pull env from Vercel (from your laptop; requires `vercel login` once)
+**Env keys (Vercel / `.env*` → Flutter)**
+
+| Key in Next `.env.local` or `.env.vercel.production.local` | Flutter `--dart-define` |
+|------------------------------------------------------------|-------------------------|
+| **`AUTH_GOOGLE_ID`** (Web OAuth client id, same as Next) | **`GOOGLE_SERVER_CLIENT_ID`** |
+| **`NEXT_PUBLIC_APP_URL`** or **`VERCEL_URL`** (optional) | **`API_ORIGIN`** (falls back to `https://hacklens.vercel.app`) |
+
+Resolution order: **`.env.local` first**, then **`.env.vercel.production.local`**, until **`AUTH_GOOGLE_ID`** is non-empty.
+
+### 1) Pull from Vercel (requires `vercel link` in `sonar-hack-app` and `vercel login` once)
+
+**Recommended — one command** (runs `env:pull`, then production pull if **`AUTH_GOOGLE_ID`** is still missing):
+
+```bash
+cd sonar-hack-app-flutter
+chmod +x tool/pull_vercel_env.sh   # once
+./tool/pull_vercel_env.sh
+```
+
+**Equivalent manual commands** (from **`sonar-hack-app`**):
 
 ```bash
 cd ../sonar-hack-app
 npm run env:pull
-```
-
-That writes **`../sonar-hack-app/.env.local`**. If **`AUTH_GOOGLE_ID`** is missing there (some pulls omit secrets), run production pull:
-
-```bash
-cd ../sonar-hack-app
+# If AUTH_GOOGLE_ID is still missing:
 npm run vercel:env-pull-production
 ```
 
-Then run `./tool/run_with_nextjs_env.sh` — it reads **`.env.local` first**, then **`.env.vercel.production.local`** until it finds **`AUTH_GOOGLE_ID`**.
-
-Flutter shortcut (same effect):
+Raw **`vercel`** CLI (same behavior):
 
 ```bash
-cd sonar-hack-app-flutter
-./tool/pull_vercel_env.sh
+cd ../sonar-hack-app
+vercel env pull .env.local -y
+vercel env pull .env.vercel.production.local --environment production -y
 ```
 
 ### 2) Run Flutter with IDs wired automatically
