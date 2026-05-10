@@ -46,7 +46,33 @@ class LoginScreen extends StatelessWidget {
                         await context.read<AuthState>().signInWithGoogle(origin);
                         if (context.mounted) Navigator.pop(context);
                       } catch (e) {
-                        messenger.showSnackBar(SnackBar(content: Text('$e')));
+                        if (!context.mounted) return;
+                        final text = '$e';
+                        if (text.length > 140) {
+                          await showDialog<void>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Sign-in failed'),
+                              content: SingleChildScrollView(
+                                child: SelectableText(text),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(text),
+                              duration: const Duration(seconds: 10),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
                       }
                     },
               icon: const Icon(Icons.g_mobiledata_rounded, size: 28),

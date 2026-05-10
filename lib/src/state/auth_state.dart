@@ -1,9 +1,42 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+
+/// Maps Android/iOS [PlatformException]s from [GoogleSignIn] into readable text.
+/// `sign_in_failed` with null message is common when the OAuth Android client or SHA-1 is missing.
+String formatGoogleSignInPlatformError(PlatformException e) {
+  final code = e.code;
+  final msg = e.message;
+  final detail = e.details;
+  final tail = StringBuffer();
+  if (msg != null && msg.trim().isNotEmpty) {
+    tail.write(msg.trim());
+  }
+  if (detail != null && '$detail'.trim().isNotEmpty) {
+    if (tail.isNotEmpty) tail.write(' ');
+    tail.write('$detail'.trim());
+  }
+
+  if (code == 'sign_in_failed' ||
+      code == 'SIGN_IN_FAILED' ||
+      code == 'sign_in_required') {
+    final intro =
+        'Google Sign-In failed${tail.isNotEmpty ? ': $tail' : ''}. '
+        'On Android this often means the app\'s signing keys are not registered in '
+        'Google Cloud Console for OAuth (Android client for package '
+        '`com.example.hacklens` + SHA-1). Run `cd android && ./gradlew signingReport` '
+        'and add the SHA-1 for the build you install (debug vs release). '
+        'Also build with `--dart-define=GOOGLE_SERVER_CLIENT_ID=<web client id>` '
+        'so the backend can verify ID tokens.';
+    return intro;
+  }
+
+  return tail.isNotEmpty ? '${e.code}: $tail' : '${e.code}: ${e.message ?? 'unknown error'}';
+}
 
 class AuthUser {
   AuthUser({required this.userId, required this.email, this.name, this.imageUrl});
@@ -58,10 +91,20 @@ class AuthState extends ChangeNotifier {
 
   Future<void> signInWithGoogle(String apiOrigin) async {
     final origin = apiOrigin.replaceAll(RegExp(r'/$'), '');
-    final account = await _google.signIn();
+    GoogleSignInAccount? account;
+    try {
+      account = await _google.signIn();
+    } on PlatformException catch (e) {
+      throw StateError(formatGoogleSignInPlatformError(e));
+    }
     if (account == null) return;
 
-    final auth = await account.authentication;
+    GoogleSignInAuthentication auth;
+    try {
+      auth = await account.authentication;
+    } on PlatformException catch (e) {
+      throw StateError(formatGoogleSignInPlatformError(e));
+    }
     final idToken = auth.idToken;
     if (idToken == null || idToken.isEmpty) {
       throw StateError(
