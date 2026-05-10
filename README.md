@@ -65,6 +65,20 @@ Web only:
 
 **Android:** if **`JAVA_HOME`** is unset, the script tries common JDK 17 paths (including `/home/neosoft/jdk-17.0.13+11`). Install JDK 17 if Gradle still fails.
 
+### USB install (release APK on a physical device)
+
+1. On the phone: **Developer options** → **USB debugging** on; plug in USB and accept the RSA fingerprint on first connect.
+2. **`adb`** must be on your **`PATH`** (Android SDK platform-tools).
+3. From **`sonar-hack-app-flutter`**:
+
+```bash
+chmod +x tool/build_android_apk.sh tool/connect_install_android.sh
+./tool/build_android_apk.sh          # outputs build/app/outputs/flutter-apk/app-release.apk
+./tool/connect_install_android.sh    # build + adb install -r to one connected device
+```
+
+Google Sign-In on Android still requires an OAuth client that matches **app id + signing SHA-1** in Google Cloud Console (debug keystore for local builds unless you configure release signing).
+
 ---
 
 ## If you cannot use Vercel CLI
