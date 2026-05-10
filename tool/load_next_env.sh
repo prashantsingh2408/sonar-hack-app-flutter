@@ -24,14 +24,31 @@ extract_kv() {
 
 export GOOGLE_SERVER_CLIENT_ID=""
 _ENV=""
-for f in "$NEXT_ROOT/.env.local" "$NEXT_ROOT/.env.vercel.production.local"; do
+for f in "$NEXT_ROOT/.env.local" "$NEXT_ROOT/.env.preview.local" "$NEXT_ROOT/.env.vercel.production.local"; do
   [[ -f "$f" ]] || continue
+  v=""
   if v="$(extract_kv AUTH_GOOGLE_ID "$f" 2>/dev/null)" && [[ -n "${v:-}" ]]; then
-    _ENV="$f"
-    GOOGLE_SERVER_CLIENT_ID="$v"
-    break
+    :
+  elif v="$(extract_kv GOOGLE_CLIENT_ID "$f" 2>/dev/null)" && [[ -n "${v:-}" ]]; then
+    # Vercel pulls sometimes leave AUTH_GOOGLE_ID empty while GOOGLE_CLIENT_ID has the web OAuth client id.
+    :
+  else
+    continue
   fi
+  _ENV="$f"
+  GOOGLE_SERVER_CLIENT_ID="$v"
+  break
 done
+if [[ -z "${GOOGLE_SERVER_CLIENT_ID:-}" ]] && [[ -n "${GOOGLE_SERVER_CLIENT_ID_OVERRIDE:-}" ]]; then
+  GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID_OVERRIDE"
+fi
+if [[ -z "${GOOGLE_SERVER_CLIENT_ID:-}" ]] && [[ -f "$NEXT_ROOT/.env.flutter" ]]; then
+  if v="$(extract_kv AUTH_GOOGLE_ID "$NEXT_ROOT/.env.flutter" 2>/dev/null)" && [[ -n "${v:-}" ]]; then
+    GOOGLE_SERVER_CLIENT_ID="$v"
+  elif v="$(extract_kv GOOGLE_SERVER_CLIENT_ID "$NEXT_ROOT/.env.flutter" 2>/dev/null)" && [[ -n "${v:-}" ]]; then
+    GOOGLE_SERVER_CLIENT_ID="$v"
+  fi
+fi
 export GOOGLE_SERVER_CLIENT_ID
 
 export API_ORIGIN="https://hacklens.vercel.app"
