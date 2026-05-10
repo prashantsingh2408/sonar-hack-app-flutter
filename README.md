@@ -109,6 +109,8 @@ chmod +x tool/build_android_apk.sh tool/connect_install_android.sh
 
 Google Sign-In on Android still requires an OAuth client that matches **app id + signing SHA-1** in Google Cloud Console (debug keystore for local builds unless you configure release signing).
 
+If sign-in fails with **`invalid_google_token`**: the Next route checks the token **`aud`** against **`AUTH_GOOGLE_ID`**, **`GOOGLE_CLIENT_ID`**, **`AUTH_GOOGLE_ANDROID_CLIENT_ID`**, and **`AUTH_GOOGLE_IOS_CLIENT_ID`** on the server. Ensure Vercel has at least one of those matching your **`GOOGLE_SERVER_CLIENT_ID`** dart-define (usually the **Web** client id). If Google issues tokens with the **Android** client id as audience, add **`AUTH_GOOGLE_ANDROID_CLIENT_ID`** in Vercel to that Android OAuth client id.
+
 ---
 
 ## If you cannot use Vercel CLI

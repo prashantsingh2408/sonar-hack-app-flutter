@@ -78,7 +78,19 @@ class AuthState extends ChangeNotifier {
     );
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('verify-google failed (${res.statusCode}): ${res.body}');
+      var detail = res.body;
+      try {
+        final j = jsonDecode(res.body);
+        if (j is Map<String, dynamic>) {
+          final err = j['error'];
+          final hint = j['hint'];
+          if (err != null) {
+            detail = err.toString();
+            if (hint != null) detail = '$detail ($hint)';
+          }
+        }
+      } catch (_) {}
+      throw StateError('verify-google failed (${res.statusCode}): $detail');
     }
 
     final json = jsonDecode(res.body);
