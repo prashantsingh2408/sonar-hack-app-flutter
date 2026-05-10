@@ -27,9 +27,10 @@ Flutter does **not** store OAuth secrets in-repo. Scripts read **`sonar-hack-app
 | Key in Next `.env.local` or `.env.vercel.production.local` | Flutter `--dart-define` |
 |------------------------------------------------------------|-------------------------|
 | **`AUTH_GOOGLE_ID`** (Web OAuth client id, same as Next) | **`GOOGLE_SERVER_CLIENT_ID`** |
+| **`GOOGLE_CLIENT_ID`** | Same fallback if **`AUTH_GOOGLE_ID`** is empty after **`vercel env pull`** (Vercel sometimes omits the duplicate). |
 | **`NEXT_PUBLIC_APP_URL`** or **`VERCEL_URL`** (optional) | **`API_ORIGIN`** (falls back to `https://hacklens.vercel.app`) |
 
-Resolution order: **`.env.local` first**, then **`.env.vercel.production.local`**, until **`AUTH_GOOGLE_ID`** is non-empty.
+Resolution order: **`.env.local`**, **`.env.preview.local`**, **`.env.vercel.production.local`** — for OAuth id, **`AUTH_GOOGLE_ID`** first, then **`GOOGLE_CLIENT_ID`** if the former is empty.
 
 ### 1) Pull from Vercel (requires `vercel link` in `sonar-hack-app` and `vercel login` once)
 
