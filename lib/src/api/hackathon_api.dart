@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../browse/query_params.dart';
 import '../models/hackathon.dart';
 
 class HackathonApiException implements Exception {
@@ -20,24 +21,19 @@ class HackathonApi {
   /// No trailing slash, e.g. https://hacklens.vercel.app
   final String origin;
 
-  Uri _uri(String path, [Map<String, String>? query]) {
+  Uri _uri(String path, Map<String, String> query) {
     final base = origin.replaceAll(RegExp(r'/$'), '');
     return Uri.parse('$base$path').replace(queryParameters: query);
   }
 
-  Future<PaginatedResponse<Hackathon>> listHackathons({
-    int page = 1,
-    int pageSize = 20,
-    String search = '',
-    String sort = 'most_relevant',
-  }) async {
-    final uri = _uri('/api/hackathons', {
-      'page': '$page',
-      'page_size': '$pageSize',
-      'sort': sort,
-      if (search.trim().isNotEmpty) 'search': search.trim(),
-    });
+  Future<PaginatedResponse<Hackathon>> listHackathons(BuildHackathonListParamsInput input) async {
+    final query = buildHackathonListParamsFromState(input);
+    return listHackathonsQuery(query);
+  }
 
+  /// Shared by main catalog + home rails (query map matches web `URLSearchParams`).
+  Future<PaginatedResponse<Hackathon>> listHackathonsQuery(Map<String, String> query) async {
+    final uri = _uri('/api/hackathons', query);
     final res = await http.get(uri, headers: {'Accept': 'application/json'});
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw HackathonApiException(

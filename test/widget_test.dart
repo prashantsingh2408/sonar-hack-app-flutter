@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hacklens/src/app.dart';
 import 'package:hacklens/src/state/app_state.dart';
+import 'package:hacklens/src/state/auth_state.dart';
+import 'package:hacklens/src/state/browse_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -15,8 +17,12 @@ void main() {
 
   testWidgets('bootstraps with navigation destinations', (tester) async {
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => AppState(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AppState()),
+          ChangeNotifierProvider(create: (_) => BrowseState()),
+          ChangeNotifierProvider(create: (_) => AuthState()),
+        ],
         child: const HackLensApp(),
       ),
     );

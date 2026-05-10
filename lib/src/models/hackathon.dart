@@ -13,8 +13,10 @@ class Hackathon {
     this.themes,
     this.prizeAmount,
     this.registrationsCount,
-    this.displayLocation,
+      this.displayLocation,
     this.featured,
+    this.managedByDevpostBadge,
+    this.listingActive,
   });
 
   final int id;
@@ -32,6 +34,8 @@ class Hackathon {
   final int? registrationsCount;
   final String? displayLocation;
   final bool? featured;
+  final bool? managedByDevpostBadge;
+  final bool? listingActive;
 
   factory Hackathon.fromJson(Map<String, dynamic> j) {
     return Hackathon(
@@ -50,6 +54,8 @@ class Hackathon {
       registrationsCount: j['registrations_count'] as int?,
       displayLocation: j['display_location'] as String?,
       featured: j['featured'] as bool?,
+      managedByDevpostBadge: j['managed_by_devpost_badge'] as bool?,
+      listingActive: j['listing_active'] as bool?,
     );
   }
 }

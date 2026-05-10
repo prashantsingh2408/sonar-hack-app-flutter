@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'login_screen.dart';
 import '../state/app_state.dart';
+import '../state/auth_state.dart';
 import '../widgets/app_icons.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -47,6 +49,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          Text('Account', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: scheme.primary)),
+          const SizedBox(height: 8),
+          Consumer<AuthState>(
+            builder: (context, auth, _) {
+              if (auth.isSignedIn && auth.user != null) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.person_rounded),
+                      title: Text(auth.user!.email),
+                      subtitle: Text(auth.user!.name ?? 'Signed in'),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => auth.signOut(),
+                      icon: const Icon(Icons.logout_rounded),
+                      label: const Text('Sign out'),
+                    ),
+                  ],
+                );
+              }
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.login_rounded),
+                title: const Text('Sign in'),
+                subtitle: const Text('Google · same backend as the web app'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 28),
           Text('API', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: scheme.primary)),
           const SizedBox(height: 8),
           TextField(
