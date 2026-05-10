@@ -50,6 +50,13 @@ npm run env:pull:all
 
 Then run **`./tool/pull_vercel_env.sh`** here so Flutter picks up **`AUTH_GOOGLE_ID`** from the Next `.env*` files.
 
+To see **which Vercel environments** host **`AUTH_GOOGLE_ID`** / **`AUTH_GOOGLE_SECRET`** on each linked project (same as Dashboard → Environment Variables):
+
+```bash
+cd ../sonar-hack-app
+npm run vercel:env-check-keys
+```
+
 **Equivalent manual commands** (from **`sonar-hack-app`**):
 
 ```bash
