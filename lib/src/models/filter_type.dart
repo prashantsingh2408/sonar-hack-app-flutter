@@ -51,6 +51,9 @@ class FilterType {
   FilterType copyWith({
     List<String>? platform,
     List<String>? status,
+    List<String>? techStack,
+    List<String>? stars,
+    List<String>? contributors,
     List<String>? daysRemaining,
     String? organizer,
     List<String>? interestThemes,

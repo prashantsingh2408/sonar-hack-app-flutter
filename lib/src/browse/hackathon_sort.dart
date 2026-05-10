@@ -1,4 +1,4 @@
- — values accepted by `/api/hackathons`.
+/// Sort keys accepted by `/api/hackathons` (mirrors web `hackathonSort.ts`).
 const hackathonSortDefault = 'most_relevant';
 
 const hackathonSortOptions = <String>{
