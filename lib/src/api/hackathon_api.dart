@@ -42,10 +42,11 @@ class HackathonApi {
         res.statusCode,
       );
     }
-    final json = jsonDecode(res.body);
-    if (json is! Map<String, dynamic>) {
+    final decoded = jsonDecode(res.body);
+    if (decoded is! Map) {
       throw HackathonApiException('Invalid JSON shape');
     }
+    final json = Map<String, dynamic>.from(decoded);
     return PaginatedResponse.fromJson(json, Hackathon.fromJson);
   }
 
@@ -61,14 +62,14 @@ class HackathonApi {
       if (res.statusCode < 200 || res.statusCode >= 300) {
         throw HackathonApiException(res.body.isNotEmpty ? res.body : 'by-ids failed', res.statusCode);
       }
-      final json = jsonDecode(res.body);
-      if (json is! Map<String, dynamic>) throw HackathonApiException('Invalid by-ids JSON');
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map) throw HackathonApiException('Invalid by-ids JSON');
+      final json = Map<String, dynamic>.from(decoded);
       final raw = json['items'];
       if (raw is! List) continue;
       for (final e in raw) {
-        if (e is Map<String, dynamic>) {
-          out.add(Hackathon.fromJson(e));
-        }
+        final m = coerceJsonObject(e);
+        if (m != null) out.add(Hackathon.fromJson(m));
       }
     }
     return out;
@@ -84,11 +85,13 @@ class HackathonApi {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw HackathonApiException(res.body, res.statusCode);
     }
-    final json = jsonDecode(res.body);
-    if (json is! Map<String, dynamic> || json['ok'] != true) return null;
-    final item = json['item'];
-    if (item is! Map<String, dynamic>) return null;
-    return Hackathon.fromJson(item);
+    final decoded = jsonDecode(res.body);
+    if (decoded is! Map) return null;
+    final json = Map<String, dynamic>.from(decoded);
+    if (json['ok'] != true) return null;
+    final m = coerceJsonObject(json['item']);
+    if (m == null) return null;
+    return Hackathon.fromJson(m);
   }
 }
 

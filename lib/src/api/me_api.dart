@@ -36,23 +36,17 @@ class MeApi {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw MeApiException(body is Map ? body['hint']?.toString() ?? res.body : res.body, res.statusCode);
     }
-    if (body is! Map<String, dynamic> || body['ok'] != true) {
+    final map = body is Map<String, dynamic> ? body : (body is Map ? Map<String, dynamic>.from(body) : null);
+    if (map == null || map['ok'] != true) {
       throw MeApiException('Unexpected wishlist response', res.statusCode);
     }
-    final items = body['items'];
+    final items = map['items'];
     if (items is! List) return [];
     final ids = <int>[];
     for (final e in items) {
-      if (e is Map<String, dynamic> && e['item_type'] == 'hackathon') {
-        final id = e['item_id'];
-        int? parsed;
-        if (id is int) {
-          parsed = id;
-        } else if (id is num) {
-          parsed = id.round();
-        } else if (id is String) {
-          parsed = int.tryParse(id.trim());
-        }
+      final row = coerceJsonObject(e);
+      if (row != null && row['item_type'] == 'hackathon') {
+        final parsed = coerceOptionalInt(row['item_id']);
         if (parsed != null) ids.add(parsed);
       }
     }
@@ -75,10 +69,14 @@ class MeApi {
       if (res.statusCode < 200 || res.statusCode >= 300) {
         throw MeApiException(res.body, res.statusCode);
       }
-      final body = jsonDecode(res.body);
-      if (body is! Map<String, dynamic> || body['ok'] != true) {
-        throw MeApiException(res.body, res.statusCode);
-      }
+    final body = jsonDecode(res.body);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw MeApiException(res.body, res.statusCode);
+    }
+    final map = coerceJsonObject(body);
+    if (map == null || map['ok'] != true) {
+      throw MeApiException(res.body, res.statusCode);
+    }
     } else {
       final uri = _uri('/api/me/wishlist', {
         'item_id': '$hackathonId',
@@ -91,10 +89,14 @@ class MeApi {
       if (res.statusCode < 200 || res.statusCode >= 300) {
         throw MeApiException(res.body, res.statusCode);
       }
-      final body = jsonDecode(res.body);
-      if (body is! Map<String, dynamic> || body['ok'] != true) {
-        throw MeApiException(res.body, res.statusCode);
-      }
+    final body = jsonDecode(res.body);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw MeApiException(res.body, res.statusCode);
+    }
+    final map = coerceJsonObject(body);
+    if (map == null || map['ok'] != true) {
+      throw MeApiException(res.body, res.statusCode);
+    }
     }
   }
 
@@ -105,12 +107,18 @@ class MeApi {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw MeApiException(res.body, res.statusCode);
     }
-    if (body is! Map<String, dynamic> || body['ok'] != true) {
+    final root = coerceJsonObject(body);
+    if (root == null || root['ok'] != true) {
       return [];
     }
-    final raw = body['collections'];
+    final raw = root['collections'];
     if (raw is! List) return [];
-    return raw.cast<Map<String, dynamic>>();
+    final out = <Map<String, dynamic>>[];
+    for (final e in raw) {
+      final m = coerceJsonObject(e);
+      if (m != null) out.add(m);
+    }
+    return out;
   }
 
   Future<List<dynamic>> getHackathonNotificationItems() async {
@@ -118,9 +126,9 @@ class MeApi {
     final res = await http.get(uri, headers: {'Accept': 'application/json', ...bearerHeaders(accessToken)});
     final body = jsonDecode(res.body);
     if (res.statusCode < 200 || res.statusCode >= 300) return [];
-    if (body is! Map<String, dynamic>) return [];
-    if (body['ok'] != true) return [];
-    final items = body['items'];
+    final root = coerceJsonObject(body);
+    if (root == null || root['ok'] != true) return [];
+    final items = root['items'];
     if (items is List) return items;
     return [];
   }
@@ -148,9 +156,8 @@ class MeApi {
     if (raw is! List) return [];
     final out = <Hackathon>[];
     for (final e in raw) {
-      if (e is Map<String, dynamic>) {
-        out.add(Hackathon.fromJson(e));
-      }
+      final m = coerceJsonObject(e);
+      if (m != null) out.add(Hackathon.fromJson(m));
     }
     return out;
   }
