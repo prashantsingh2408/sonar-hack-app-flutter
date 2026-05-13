@@ -45,7 +45,15 @@ class MeApi {
     for (final e in items) {
       if (e is Map<String, dynamic> && e['item_type'] == 'hackathon') {
         final id = e['item_id'];
-        if (id is int) ids.add(id);
+        int? parsed;
+        if (id is int) {
+          parsed = id;
+        } else if (id is num) {
+          parsed = id.round();
+        } else if (id is String) {
+          parsed = int.tryParse(id.trim());
+        }
+        if (parsed != null) ids.add(parsed);
       }
     }
     return ids;
